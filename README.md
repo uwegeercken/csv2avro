@@ -61,5 +61,58 @@ Finally, add your CSV rows containing the data like this:
 
 	writer.append(new Departure(), line);
 
-That's all - an easy way to convert your CSV files.
+That's all - an easy way to convert your CSV files. 
 
+Here is a complete code sample:
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import com.datamelt.csv.avro.CsvToAvroWriter;
+
+	public class DiscountProducer
+	{
+		public static void main(String[] args) throws Exception
+		{
+			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+			
+			System.out.println(df.format(new Date()) + " processing records started");
+
+			String folder = "/home/uwe/development/pcm17/avro";
+			String outputFile = folder + "/discount_test.avro";
+
+			File inputFile = new File(folder + "/discount_test.csv");
+			FileReader fileReader = new FileReader(inputFile);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+			
+			long counter=0;
+			String line;
+			
+			CsvToAvroWriter<Discount> writer = new CsvToAvroWriter<Discount>(Discount.SCHEMA$,outputFile,CsvToAvroWriter.MODE_WRITE);
+			
+			while((line = bufferedReader.readLine()) != null)
+			{
+				counter ++;
+				
+				writer.append(new Discount(), line);
+				
+				if(counter % 10000==0)
+				{
+					System.out.println(df.format(new Date()) + " processed records: " + counter);
+				}
+			}
+			fileReader.close();	
+			writer.closeWriter();
+			
+			System.out.println(df.format(new Date()));
+			System.out.println(df.format(new Date()) + " processing records complete");
+			System.out.println(df.format(new Date()) + " total processed records: " + counter);
+		}
+	}
+
+Please send your feedback.
+
+last update: Uwe Geercken - 2017-11-18
