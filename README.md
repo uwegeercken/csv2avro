@@ -31,19 +31,19 @@ Here is an example:
 
 This is the Avro schema (in this case named: discount.avsc):
 
-{"namespace": "com.datamelt.avro.discount",
- "type": "record",
- "name": "Discount",
- "fields": [
-	{"name": "id", "type": "long"},
-	{"name": "age", "type": "int"},
-	{"name": "destination_region", "type": "string"},
-	{"name": "destination_airport", "type": "string"},
-	{"name": "price", "type": "float"},
-	{"name": "frequent_traveller", "type": "int"}
-	]
-}
-	
+	{"namespace": "com.datamelt.avro.discount",
+	 "type": "record",
+	 "name": "Discount",
+	 "fields": [
+		{"name": "id", "type": "long"},
+		{"name": "age", "type": "int"},
+		{"name": "destination_region", "type": "string"},
+		{"name": "destination_airport", "type": "string"},
+		{"name": "price", "type": "float"},
+		{"name": "frequent_traveller", "type": "int"}
+		]
+	}
+
 Next compile the Avro schema with the Avro tools. Like this:
 
 	java -jar avro-tools-1.8.2.jar compile schema discount.avsc .
