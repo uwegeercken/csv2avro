@@ -44,6 +44,9 @@ import org.joda.time.DateTime;
  * Create a CsvToAvroWriter object by supplying the Avro schema and the path
  * and name of the output file to use.
  * 
+ * There are two modes available: write and append. So either the data is appended
+ * to an existing avro file (append mode) or written to a new file (write mode)
+ * 
  * You may set the compression factor for the Avro output file as well as the
  * mode. The data can either be written to a new file or appended to an existing file.
  * 
@@ -52,7 +55,7 @@ import org.joda.time.DateTime;
  * defined separator or if none is defined the default separator. The resulting
  * Avro record is then appended to the output file.
  * 
- * Use the setCsvHeader() to define the fields that are present in the CSV file.
+ * Use the setCsvHeader() method to define the fields that are present in the CSV file.
  * 
  * If the header row of the CSV is undefined, then it is assumed that the fields
  * in the CSV file are present in the same sequence as they are defined in the
@@ -67,7 +70,7 @@ import org.joda.time.DateTime;
  * 
  * 
  * 
- * @author uwe - 2017-11-18
+ * @author uwe - 2017-12-04
  *
  * 
  */
@@ -107,18 +110,21 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	 * Constructor to accept the Avro schema file and the output file name
 	 * to write the avro data to. Default compression of 6 will be used.
 	 * 
-	 * Pass the Avro schema and the path and name of the output file. An
-	 * Avro DataFileWriter object will be created for the given output file.
+	 * Pass the Avro schema and the path and name of the output file and the
+	 * mode (write or append).
+	 * An Avro DataFileWriter object will be created for the given output file,
+	 * using the default compression.
 	 * 
 	 * @param schema		schema corresponding to the data
-	 * @param outputFile	path and anme of the output file
+	 * @param outputFile	path and name of the output file
+	 * @param mode			either write or append to the avro file
 	 * @throws Exception
 	 */
 	public CsvToAvroWriter(Schema schema, String outputFileName, int mode) throws Exception
 	{
 		this.avroSchema = schema;
 	    this.outputFileName = outputFileName;
-	    this.mode = mode;
+	    CsvToAvroWriter.mode = mode;
 	    this.getDataFileWriter(DEFAULT_COMPRESSION);
 	    
 	    // populate the map of avro field names and positions
@@ -135,11 +141,14 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	 * Constructor to accept the Avro schema file and the output file name
 	 * to write the avro data to.
 	 * 
-	 * Pass the Avro schema and the path and name of the output file. An
-	 * Avro DataFileWriter object will be created for the given output file.
+	 * Pass the Avro schema and the path and name of the output file and the
+	 * mode (write or append).
+	 * An Avro DataFileWriter object will be created for the given output file,
+	 * using the default compression.
 	 * 
 	 * @param schema				schema corresponding to the data
 	 * @param outputFile			path and name of the output file
+	 * @param mode					either write or append to the avro file
 	 * @param compressionFactor		compression factor to use
 	 * @throws Exception
 	 */
@@ -147,7 +156,7 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	{
 		this.avroSchema = schema;
 	    this.outputFileName = outputFileName;
-	    this.mode = mode;
+	    CsvToAvroWriter.mode = mode;
 	    this.getDataFileWriter(compressionFactor);
 	}
     
@@ -637,7 +646,7 @@ public class CsvToAvroWriter<T extends SpecificRecord>
      * logical type definitions can help to further define which type
      * of field is used in the schema. e.g. a date or time field.
      * 
-     * Note: there is a bug in avro 1.8.2. and atetime fields.
+     * Note: there is a bug in avro 1.8.2. and datetime fields.
      * 		 it is not clear when that will be fixed.
      * 
      * @param field		the avro schema field
