@@ -33,6 +33,9 @@ import org.apache.avro.Schema.Field;
 import org.apache.avro.Schema.Type;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumWriter;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.specific.SpecificRecord;
@@ -76,7 +79,7 @@ import org.joda.time.DateTime;
  *
  * 
  */
-public class CsvToAvroWriter<T extends SpecificRecord>
+public class CsvToAvroGenericWriter
 {
 	// constants which define the type of separator used in the csv file
 	// to separate the individual columns
@@ -98,7 +101,7 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	// default compression factor
 	public static final int DEFAULT_COMPRESSION		= 6;
 	private static Schema NULL_SCHEMA 				= Schema.create(Schema.Type.NULL);
-    private DataFileWriter<T> dataFileWriter 		= null;
+    private DataFileWriter<GenericRecord> dataFileWriter 		= null;
     private String outputFileName					= null;
     private Schema avroSchema 						= null;
     private String[] csvHeaderFields				= null;
@@ -123,36 +126,11 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	 * @param mode			either write or append to the avro file
 	 * @throws Exception
 	 */
-	public CsvToAvroWriter(Schema schema, String outputFileName, int mode) throws Exception
+	public CsvToAvroGenericWriter(Schema schema, String outputFileName, int mode) throws Exception
 	{
 		this.avroSchema = schema;
 	    this.outputFileName = outputFileName;
-	    CsvToAvroWriter.mode = mode;
-	    this.getDataFileWriter(DEFAULT_COMPRESSION);
-	    
-	    this.populateFieldMap();
-	}
-	
-	/**
-	 * Constructor to accept the Avro schema file and the output file name
-	 * to write the avro data to. Default compression of 6 will be used.
-	 * 
-	 * Pass the Avro schema and the path and name of the output file and the
-	 * mode (write or append).
-	 * 
-	 * An Avro DataFileWriter object will be created for the given output file,
-	 * using the default compression.
-	 * 
-	 * @param schema		avro schema to use
-	 * @param outputFile	path and name of the output file
-	 * @param mode			either write or append to the avro file
-	 * @throws Exception
-	 */
-	public CsvToAvroWriter(File schemaFile, String outputFileName, int mode) throws Exception
-	{
-		this.avroSchema = new Schema.Parser().parse(schemaFile);
-	    this.outputFileName = outputFileName;
-	    CsvToAvroWriter.mode = mode;
+	    CsvToAvroGenericWriter.mode = mode;
 	    this.getDataFileWriter(DEFAULT_COMPRESSION);
 	    
 	    this.populateFieldMap();
@@ -174,11 +152,11 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	 * @param compressionFactor		compression factor to use
 	 * @throws Exception
 	 */
-	public CsvToAvroWriter(Schema schema, String outputFileName, int mode, int compressionFactor) throws Exception
+	public CsvToAvroGenericWriter(Schema schema, String outputFileName, int mode, int compressionFactor) throws Exception
 	{
 		this.avroSchema = schema;
 	    this.outputFileName = outputFileName;
-	    CsvToAvroWriter.mode = mode;
+	    CsvToAvroGenericWriter.mode = mode;
 	    this.getDataFileWriter(compressionFactor);
 	    
 	    this.populateFieldMap();
@@ -197,15 +175,67 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	 * @param jsonSchema			avro schema to use
 	 * @param outputFile			path and name of the output file
 	 * @param mode					either write or append to the avro file
-	 * @param compressionFactor		compression factor to use
 	 * @throws Exception
 	 */
-	public CsvToAvroWriter(String jsonSchema, String outputFileName, int mode, int compressionFactor) throws Exception
+	public CsvToAvroGenericWriter(String jsonSchema, String outputFileName, int mode) throws Exception
 	{
 		
 		this.avroSchema = new Schema.Parser().parse(jsonSchema);
 	    this.outputFileName = outputFileName;
-	    CsvToAvroWriter.mode = mode;
+	    CsvToAvroGenericWriter.mode = mode;
+	    this.getDataFileWriter(DEFAULT_COMPRESSION);
+	    
+	    this.populateFieldMap();
+	}
+	
+	/**
+	 * Constructor to accept the Avro schema file and the output file name
+	 * to write the avro data to.
+	 * 
+	 * Pass the Avro schema and the path and name of the output file and the
+	 * mode (write or append).
+	 * 
+	 * An Avro DataFileWriter object will be created for the given output file,
+	 * using the default compression.
+	 * 
+	 * @param jsonSchema			avro schema to use
+	 * @param outputFile			path and name of the output file
+	 * @param mode					either write or append to the avro file
+	 * @throws Exception
+	 */
+	public CsvToAvroGenericWriter(File jsonSchemaFile, String outputFileName, int mode) throws Exception
+	{
+		
+		this.avroSchema = new Schema.Parser().parse(jsonSchemaFile);
+	    this.outputFileName = outputFileName;
+	    CsvToAvroGenericWriter.mode = mode;
+	    this.getDataFileWriter(DEFAULT_COMPRESSION);
+	    
+	    this.populateFieldMap();
+	}
+
+	/**
+	 * Constructor to accept the Avro schema file and the output file name
+	 * to write the avro data to.
+	 * 
+	 * Pass the Avro schema and the path and name of the output file and the
+	 * mode (write or append).
+	 * 
+	 * An Avro DataFileWriter object will be created for the given output file,
+	 * using the default compression.
+	 * 
+	 * @param jsonSchema			avro schema to use
+	 * @param outputFile			path and name of the output file
+	 * @param mode					either write or append to the avro file
+	 * @param compressionFactor		compression factor to use
+	 * @throws Exception
+	 */
+	public CsvToAvroGenericWriter(String jsonSchema, String outputFileName, int mode, int compressionFactor) throws Exception
+	{
+		
+		this.avroSchema = new Schema.Parser().parse(jsonSchema);
+	    this.outputFileName = outputFileName;
+	    CsvToAvroGenericWriter.mode = mode;
 	    this.getDataFileWriter(compressionFactor);
 	    
 	    this.populateFieldMap();
@@ -236,8 +266,8 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	 */
     private void getDataFileWriter(int compressionFactor) throws Exception
     {
-		DatumWriter<T> datumWriter = new SpecificDatumWriter<T>(avroSchema);
-		DataFileWriter<T> dataFileWriter = new DataFileWriter<T>(datumWriter);
+    	DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<GenericRecord>(avroSchema);
+    	DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<GenericRecord>(datumWriter);
 		dataFileWriter.setCodec(CodecFactory.deflateCodec(compressionFactor)); 
 		
 		if(mode == MODE_WRITE)
@@ -273,9 +303,9 @@ public class CsvToAvroWriter<T extends SpecificRecord>
      * @param separatorCharacter	The separator used to separate the individual fields
      * @throws Exception
      */
-    public void append(T record, String line, String separatorCharacter) throws Exception
+    public void append(String line, String separatorCharacter) throws Exception
     {
-    	populate(record, getSplitLine(line, separatorCharacter));
+    	GenericRecord record = populate(getSplitLine(line, separatorCharacter));
     	ArrayList <Field>nullFields = getInvalidNullFields(record);
     	if(nullFields.size()>0)
     	{
@@ -288,9 +318,8 @@ public class CsvToAvroWriter<T extends SpecificRecord>
     }
 
     /**
-     * The append method accepts an Avro SpecificRecord, a line/row of data from
-     * a CSV file. The line/row will be split into it's single fields using the
-     * provided separator.
+     * The append method accepts a line/row of data from a CSV file. The line/row 
+     * will be split into it's single fields using the provided separator.
      * 
      * The resulting Avro record is then appended to the output file.
      * 
@@ -304,14 +333,13 @@ public class CsvToAvroWriter<T extends SpecificRecord>
      * field with the same name in the schema. In this case the sequence of fields in the
      * CSV file is not relevant - the method will update the correct Avro field.
      * 
-     * @param record				The SpecificRecord to use
      * @param fields				The CSV row as an array of Strings
      * @param separatorCharacter	The separator used to separate the individual fields
      * @throws Exception
      */
-    public void append(T record, String[] fields) throws Exception
+    public void append(String[] fields) throws Exception
     {
-    	populate(record, fields);
+    	GenericRecord record = populate(fields);
     	ArrayList <Field>nullFields = getInvalidNullFields(record);
     	if(nullFields.size()>0)
     	{
@@ -324,9 +352,8 @@ public class CsvToAvroWriter<T extends SpecificRecord>
     }
 
     /**
-     * The append method accepts an Avro SpecificRecord, a line/row of data from
-     * a CSV file. The line/row will be split into it's single fields using the
-     * default separator.
+     * The append method accepts a line/row of data from a CSV file. The line/row 
+     * will be split into it's single fields using the provided separator.
      * 
      * The resulting Avro record is then appended to the output file.
      * 
@@ -340,13 +367,12 @@ public class CsvToAvroWriter<T extends SpecificRecord>
      * field with the same name in the schema. In this case the sequence of fields in the
      * CSV file is not relevant - the method will update the correct Avro field.
      * 
-     * @param record				The SpecificRecord to use
      * @param line					A line/row from a CSV file
      * @throws Exception
      */
-    public void append(T record, String line) throws Exception
+    public void append(String line) throws Exception
     {
-    	append(record, line, separator);
+    	append(line, separator);
     }
     
     /**
@@ -458,7 +484,7 @@ public class CsvToAvroWriter<T extends SpecificRecord>
      * @param record
      * @return
      */
-    private ArrayList<Field> getInvalidNullFields(T record) 
+    private ArrayList<Field> getInvalidNullFields(GenericRecord record) 
     {
     	List<Field> avroFields = avroSchema.getFields();
     	ArrayList<Field>nullFields = new ArrayList<Field>();
@@ -481,7 +507,7 @@ public class CsvToAvroWriter<T extends SpecificRecord>
     }
     
     /**
-     * populates an Avro Specific record with the values from a row of CSV data.
+     * populates an Avro Generic record with the values from a row of CSV data.
      * 
      * If the header row of the CSV is undefined, then it is assumed that the fields
      * in the CSV file are present in the same sequence as they are defined in the
@@ -491,12 +517,12 @@ public class CsvToAvroWriter<T extends SpecificRecord>
      * field with the same name in the schema. In this case the sequence of fields in the
      * CSV file is not relevant - the method will update the correct Avro field.
      * 
-     * @param record				The SpecificRecord to use
      * @param fields				a line/row of data from a CSV file as an array of Strings
      * @return						a record with the data of a line from the CSV file
      */
-    private T populate(T record, String[] fields) throws Exception
+    private GenericRecord populate(String[] fields) throws Exception
 	{
+    	GenericRecord record = new GenericData.Record(avroSchema);
     	// if the names of the fields are defined (header row was specified)
     	if(csvHeaderFields !=null)
     	{
@@ -528,7 +554,7 @@ public class CsvToAvroWriter<T extends SpecificRecord>
     	else
     	{
     		List<Field> avroFields = avroSchema.getFields();
-    		for(int i=0;i<fields.length;i++)
+			for(int i=0;i<fields.length;i++)
 			{
 				Field field = avroFields.get(i);
 				// retrieve a field from the Avro SpecificRecord
