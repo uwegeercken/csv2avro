@@ -55,22 +55,24 @@ import org.joda.time.DateTime;
  * defined separator or if none is defined the default separator. The resulting
  * Avro record is then appended to the output file.
  * 
+ * Only data of type String, Integer, Long, Float, Double and Boolean are supported.
+ * 
  * Use the setCsvHeader() method to define the fields that are present in the CSV file.
  * 
  * If the header row of the CSV is undefined, then it is assumed that the fields
- * in the CSV file are present in the same sequence as they are defined in the
+ * in the CSV file are present in the exact same sequence as they are defined in the
  * Avro schema.
  * 
  * If the header row is defined, then the method will locate the corresponding Avro
- * field with the same name in the schema. In this case the sequence of fields in the
- * CSV file is not relevant - the method will update the correct Avro field.
+ * field with the same name in the Avro schema. In this case the sequence of fields in the
+ * CSV file is not relevant - the method will locate and update the correct Avro field.
  * 
  * Don't forget to close the writer using the close() method, after all records
  * are processed.
  * 
  * 
  * 
- * @author uwe - 2017-12-04
+ * @author uwe - 2017-12-05
  *
  * 
  */
@@ -112,10 +114,11 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	 * 
 	 * Pass the Avro schema and the path and name of the output file and the
 	 * mode (write or append).
+	 * 
 	 * An Avro DataFileWriter object will be created for the given output file,
 	 * using the default compression.
 	 * 
-	 * @param schema		schema corresponding to the data
+	 * @param schema		avro schema to use
 	 * @param outputFile	path and name of the output file
 	 * @param mode			either write or append to the avro file
 	 * @throws Exception
@@ -127,14 +130,7 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	    CsvToAvroWriter.mode = mode;
 	    this.getDataFileWriter(DEFAULT_COMPRESSION);
 	    
-	    // populate the map of avro field names and positions
-    	fieldMap = new HashMap<String,Integer>();
-    	List<Field> avroFields = avroSchema.getFields();
-    	for(int i=0;i<avroFields.size();i++)
-    	{
-    		Field avroField = avroFields.get(i);
-    		fieldMap.put(avroField.name(), avroField.pos());
-    	}
+	    this.populateFieldMap();
 	}
 	
 	/**
@@ -143,10 +139,11 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	 * 
 	 * Pass the Avro schema and the path and name of the output file and the
 	 * mode (write or append).
+	 * 
 	 * An Avro DataFileWriter object will be created for the given output file,
 	 * using the default compression.
 	 * 
-	 * @param schema				schema corresponding to the data
+	 * @param schema				avro schema to use
 	 * @param outputFile			path and name of the output file
 	 * @param mode					either write or append to the avro file
 	 * @param compressionFactor		compression factor to use
@@ -158,8 +155,53 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	    this.outputFileName = outputFileName;
 	    CsvToAvroWriter.mode = mode;
 	    this.getDataFileWriter(compressionFactor);
+	    
+	    this.populateFieldMap();
+	}
+	
+	/**
+	 * Constructor to accept the Avro schema file and the output file name
+	 * to write the avro data to.
+	 * 
+	 * Pass the Avro schema and the path and name of the output file and the
+	 * mode (write or append).
+	 * 
+	 * An Avro DataFileWriter object will be created for the given output file,
+	 * using the default compression.
+	 * 
+	 * @param jsonSchema			avro schema to use
+	 * @param outputFile			path and name of the output file
+	 * @param mode					either write or append to the avro file
+	 * @param compressionFactor		compression factor to use
+	 * @throws Exception
+	 */
+	public CsvToAvroWriter(String jsonSchema, String outputFileName, int mode, int compressionFactor) throws Exception
+	{
+		
+		this.avroSchema = new Schema.Parser().parse(jsonSchema);
+	    this.outputFileName = outputFileName;
+	    CsvToAvroWriter.mode = mode;
+	    this.getDataFileWriter(compressionFactor);
+	    
+	    this.populateFieldMap();
 	}
     
+	/**
+	 * add all fields and their positions from the Avro schema to a map
+	 * for easy retrieval
+	 */
+	private void populateFieldMap()
+	{
+		// populate the map of avro field names and positions
+    	fieldMap = new HashMap<String,Integer>();
+    	List<Field> avroFields = avroSchema.getFields();
+    	for(int i=0;i<avroFields.size();i++)
+    	{
+    		Field avroField = avroFields.get(i);
+    		fieldMap.put(avroField.name(), avroField.pos());
+    	}
+	}
+	
 	/**
 	 * creates a DatumWriter with the specified Avro schema and then
 	 * creates a DataFileWriter object.
@@ -208,8 +250,8 @@ public class CsvToAvroWriter<T extends SpecificRecord>
      */
     public void append(T record, String line, String separatorCharacter) throws Exception
     {
-    	populate(record, line, separatorCharacter);
-    	ArrayList <Field>nullFields = checkFields(record);
+    	populate(record, getSplitLine(line, separatorCharacter));
+    	ArrayList <Field>nullFields = getInvalidNullFields(record);
     	if(nullFields.size()>0)
     	{
     		throw new Exception("fields with null values but the schema does not allow for null: " + nullFields.toString());
@@ -219,12 +261,47 @@ public class CsvToAvroWriter<T extends SpecificRecord>
     		dataFileWriter.append(record);
     	}
     }
-    
+
     /**
      * The append method accepts an Avro SpecificRecord, a line/row of data from
      * a CSV file. The line/row will be split into it's single fields using the
-     * default separator. Use the setSeparator() method to define a different
-     * separator.
+     * provided separator.
+     * 
+     * The resulting Avro record is then appended to the output file.
+     * 
+     * Use the setCsvHeader() to define the fields that are present in the CSV file.
+     * 
+     * If the header row of the CSV is undefined, then it is assumed that the fields
+     * in the CSV file are present in the same sequence as they are defined in the
+     * Avro schema.
+     * 
+     * If the header row is defined, then this method will locate the corresponding Avro
+     * field with the same name in the schema. In this case the sequence of fields in the
+     * CSV file is not relevant - the method will update the correct Avro field.
+     * 
+     * @param record				The SpecificRecord to use
+     * @param fields				The CSV row as an array of Strings
+     * @param separatorCharacter	The separator used to separate the individual fields
+     * @throws Exception
+     */
+    public void append(T record, String[] fields) throws Exception
+    {
+    	populate(record, fields);
+    	ArrayList <Field>nullFields = getInvalidNullFields(record);
+    	if(nullFields.size()>0)
+    	{
+    		throw new Exception("fields with null values but the schema does not allow for null: " + nullFields.toString());
+    	}
+    	else
+    	{
+    		dataFileWriter.append(record);
+    	}
+    }
+
+    /**
+     * The append method accepts an Avro SpecificRecord, a line/row of data from
+     * a CSV file. The line/row will be split into it's single fields using the
+     * default separator.
      * 
      * The resulting Avro record is then appended to the output file.
      * 
@@ -349,7 +426,14 @@ public class CsvToAvroWriter<T extends SpecificRecord>
     	dataFileWriter.close(); 
     }
     
-    private ArrayList<Field> checkFields(T record) 
+    /**
+     * returns a list of fields that can be null based on
+     * the Avro schema.
+     * 
+     * @param record
+     * @return
+     */
+    private ArrayList<Field> getInvalidNullFields(T record) 
     {
     	List<Field> avroFields = avroSchema.getFields();
     	ArrayList<Field>nullFields = new ArrayList<Field>();
@@ -366,6 +450,11 @@ public class CsvToAvroWriter<T extends SpecificRecord>
     	return nullFields;
     }
     
+    private String[] getSplitLine(String line, String separatorCharacter)
+    {
+    	return line.split(separatorCharacter);
+    }
+    
     /**
      * populates an Avro Specific record with the values from a row of CSV data.
      * 
@@ -378,14 +467,11 @@ public class CsvToAvroWriter<T extends SpecificRecord>
      * CSV file is not relevant - the method will update the correct Avro field.
      * 
      * @param record				The SpecificRecord to use
-     * @param line					a line/row of data from a CSV file
-     * @param separatorCharacter	the separator used to separate the individual fields of the CSV row
+     * @param fields				a line/row of data from a CSV file as an array of Strings
      * @return						a record with the data of a line from the CSV file
      */
-    private T populate(T record,String line, String separatorCharacter) throws Exception
+    private T populate(T record, String[] fields) throws Exception
 	{
-    	String[] fields = line.split(separatorCharacter);
-    	
     	// if the names of the fields are defined (header row was specified)
     	if(csvHeaderFields !=null)
     	{
@@ -425,15 +511,23 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 				Object object = getObject(field,fields[i]);
 				// add the object to the corresponding field
 				record.put(i, object);
-				
 			}
     	}
 		return record;
 	}
     
     /**
-     * determines and converts the String value from the CSV file into
-     * the correct object (type) according to the Avro schema definition.
+     * converts the String value from the CSV file into the correct
+     * object (type) according to the Avro schema definition.
+     * 
+     * if the value is null and null is allowed per schema definition then
+     * null is returned
+     * 
+     * if the string value can not be converted to the appropriate type from
+     * the schema, an exception is thrown.
+     * 
+     * if the value is an empty string, 0 respectivly 0.0 is returned for fields
+     * of type 
      * 
      * @param field		a field from the Avro record 
      * @param value		the value from a CSV
@@ -443,8 +537,11 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 	{
     	// retrieve the field type
     	Type fieldType = getFieldType(field);
+    	
     	// retrieve the logical type of the field. relevant for some date and time types
+    	// read the documentation at: avro.apache.org
     	LogicalType logicalFieldType = getFieldLogicalType(field);
+    	
     	boolean nullAllowed = getFieldAllowsNull(field);
     	
     	if(value!=null && !value.equals(""))
@@ -527,12 +624,42 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 				throw new Exception("type [" + fieldType + "] not supported for field: [" + field + "]");
 			}
 		}
+    	// the value is either null or an empty string
 		else
 		{
-			if(value.equals("") && fieldType == Schema.Type.STRING)
+			if(value.equals(""))
 			{
-				return value;
+				if(fieldType == Schema.Type.STRING)
+				{
+					return value;
+				}
+				else if(fieldType == Schema.Type.INT)
+				{
+					return new Integer(0);
+				}
+				else if(fieldType == Schema.Type.LONG)
+				{
+					return new Long(0);
+				}
+				else if(fieldType == Schema.Type.DOUBLE)
+				{
+					return new Double(0);
+				}
+				else if(fieldType == Schema.Type.FLOAT)
+				{
+					return new Float(0);
+				}
+				else if(fieldType == Schema.Type.BOOLEAN)
+				{
+					return new Boolean(false);
+				}
+				else
+				{
+					throw new Exception("empty field value is not defined in the schema for field: [" + field + "]");
+				}
+					
 			}
+			// must be null if we arrive here
 			else
 			{
 				if(nullAllowed)
@@ -541,7 +668,7 @@ public class CsvToAvroWriter<T extends SpecificRecord>
 				}
 				else 
 				{
-					throw new Exception("field value null is not defined in the schema for field: [" + field + "]");
+					throw new Exception("field value of [null] is not defined in the schema for field: [" + field + "]");
 				}
 			}
 		}
