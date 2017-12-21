@@ -573,11 +573,11 @@ public class CsvToAvroGenericWriter
      * if the value is null and null is allowed per schema definition then
      * null is returned
      * 
-     * if the string value can not be converted to the appropriate type from
+     * if the string value can not be converted to the appropriate type in
      * the schema, an exception is thrown.
      * 
-     * if the value is an empty string, 0 respectivly 0.0 is returned for fields
-     * of type 
+     * if the value is an empty string, 0 respectively 0.0 is returned for fields
+     * of type Integer, Long, Float or Double.
      * 
      * @param field		a field from the Avro record 
      * @param value		the value from a CSV
