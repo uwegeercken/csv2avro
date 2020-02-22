@@ -23,7 +23,7 @@
 
 
   <dependencies>
-		
+
 
 		<dependency>
 			<groupId>com.datamelt</groupId>
@@ -45,7 +45,27 @@
 
 		</dependency>
 
+    <!-- https://mvnrepository.com/artifact/joda-time/joda-time -->
+    <dependency>
+        <groupId>joda-time</groupId>
+        <artifactId>joda-time</artifactId>
+        <version>2.10.5</version>
+    </dependency>
+
   </dependencies>
+
+  <distributionManagement>
+    <repository>
+      <id>nexus</id>
+      <name>Releases</name>
+      <url>http://localhost:8081/repository/maven-releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>nexus</id>
+      <name>Snapshot</name>
+      <url>http://localhost:8081/repository/maven-snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
 
   <build>
         <plugins>
